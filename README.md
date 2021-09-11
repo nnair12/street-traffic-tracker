@@ -13,7 +13,7 @@ After downloading this project, first run the following to download all the need
 
 ```pip install requirements.txt```
 
-You will then need to download the weights file. You can put in any weights file in ```pages/data```, but the file name should be ```yolov3-kitti_best.weights```.
+You will then need to download the weights file. You can put in any weights file in ```pages/data```, but the file name should be ```yolov3-kitti_best.weights```. If you want to upload your own YOLO config file, put it in ```pages/single-image/```, then in ```image_detection.py```, change the parameter used to define net in the ```get_boxes()``` method accordingly.
 
 Finally, you can run the app with the following command:
 
