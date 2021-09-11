@@ -5,7 +5,11 @@ Using this webapp, a user can upload a photo or video and detect vehicles in the
 
 For videos, these objects are tracked frame by frame. The total number of each type of object is printed.
 
+![Screenshot](images/video_example.png)
+
 For images, boxes are simply drawn over each object. Each detected object and their confidence is printed.
+
+![Screenshot](images/image_example.png)
 
 ## How to Run
 
