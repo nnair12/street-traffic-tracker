@@ -1,0 +1,2 @@
+pages/data/yolov3-kitti_best.weights filter=lfs diff=lfs merge=lfs -text
+pages/checkpoints/yolov3-kitti/variables/variables.data-00000-of-00001 filter=lfs diff=lfs merge=lfs -text
