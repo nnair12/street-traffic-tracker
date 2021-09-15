@@ -14,7 +14,7 @@ def app():
 		img = read_image(image_file)
 
 		# Detect boxes in the image
-		img_with_boxes, detections = get_boxes(img)
+		img_with_boxes, detections = get_boxes(img, image_file.name)
 
 		st.markdown("**_Here is the image with detected boxes_**")
 		st.image(img_with_boxes)

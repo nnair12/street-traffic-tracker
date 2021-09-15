@@ -1,37 +1,43 @@
 import numpy as np
 import cv2
+from datetime import datetime
+from .dbconfig import connection_string, db_name, image_collection_name
+from pymongo import MongoClient
 
 min_confidence=0.5
 min_threshold=0.3
 
 # Given an image, detect objects and return: a copy of the image with boxes drawn, and the detection results
-def get_boxes(image):
-	# Load class labels
-	labelsPath = './pages/data/classes/obj.names'
-	labels = open(labelsPath).read().strip().split('\n')
+def get_boxes(image, image_name):
+    # Load class labels
+    labelsPath = './pages/data/classes/obj.names'
+    labels = open(labelsPath).read().strip().split('\n')
 
-	# Load model architecture
-	net = cv2.dnn.readNetFromDarknet('./pages/single-image/yolov3-kitti.cfg', './pages/data/yolov3-kitti_best.weights')
-	ln = net.getLayerNames()
-	ln = [ln[i[0] - 1] for i in net.getUnconnectedOutLayers()]
+    # Load model architecture
+    net = cv2.dnn.readNetFromDarknet('./pages/single-image/yolov3-kitti.cfg', './pages/data/yolov3-kitti_best.weights')
+    ln = net.getLayerNames()
+    ln = [ln[i[0] - 1] for i in net.getUnconnectedOutLayers()]
 
-	# Set input and get output
-	blob = cv2.dnn.blobFromImage(image, 1 / 255.0, (416, 416), swapRB=True, crop=False)
-	net.setInput(blob)
-	layerOutputs = net.forward(ln)
+    # Set input and get output
+    blob = cv2.dnn.blobFromImage(image, 1 / 255.0, (416, 416), swapRB=True, crop=False)
+    net.setInput(blob)
+    layerOutputs = net.forward(ln)
 
-	boxes, confidences, classIDs = [], [], []
-	(height, width) = image.shape[:2]
+    boxes, confidences, classIDs = [], [], []
+    (height, width) = image.shape[:2]
 
-	get_boxes_and_confidences(layerOutputs, boxes, confidences, classIDs, width, height)
-	# Perform non maximal suppression
-	idxs = cv2.dnn.NMSBoxes(boxes, confidences, min_confidence, min_threshold)
+    get_boxes_and_confidences(layerOutputs, boxes, confidences, classIDs, width, height)
+    # Perform non maximal suppression
+    idxs = cv2.dnn.NMSBoxes(boxes, confidences, min_confidence, min_threshold)
 
     # Create a copy of the image to draw bounding boxes on
-	img_clone = image.copy()
-	detections = draw_boxes(idxs, img_clone, boxes, classIDs, confidences, labels)
+    img_clone = image.copy()
+    detections = draw_boxes(idxs, img_clone, boxes, classIDs, confidences, labels)
 
-	return img_clone, detections
+    # Update CosmosDB with detections
+    update_db(image_name, detections)
+
+    return img_clone, detections
 
 # From detections, get bounding boxes and their respective confidence and classID
 def get_boxes_and_confidences(layerOutputs, boxes, confidences, classIDs, width, height):
@@ -83,3 +89,26 @@ def draw_boxes(idxs, image, boxes, classIDs, confidences, labels):
             except IndexError:
                 print("Invalid ID " + str(classIDs[i]))
     return detections
+
+# Update database with detection
+def update_db(filename, detections):
+    detections_list = []
+    for detection in detections:
+        item, confidence = detection.split(': ')
+        detections_list.append({item : float(confidence)})
+    date = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+    image_json = { 'filename': filename, 'date_added': date, 'detections' : detections_list }
+
+    # Connect to DB
+    connection_uri = connection_string
+    client = MongoClient(connection_uri)
+    db = client[db_name]
+    image_collection = db[image_collection_name]
+    # Insert record into collection
+    try:
+        image_collection.insert_one(image_json)
+        print("Added Image detection to Database: ", image_json)
+    except:
+        print("Unable to add detection to Database")
+    # Close the client
+    client.close()
