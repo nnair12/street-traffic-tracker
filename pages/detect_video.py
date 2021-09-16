@@ -30,7 +30,7 @@ def app():
 		inputTempFile.write(video_file.read())
 
 		# Detect images on the video
-		resultTempFile, tracked_objects = tracker.track_video(inputTempFile.name)
+		resultTempFile, tracked_objects = tracker.track_video(inputTempFile.name, video_file.name)
 		close_file(inputTempFile)
 
 		# Display resulting video

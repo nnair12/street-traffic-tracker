@@ -28,6 +28,11 @@ from .tools import generate_detections as gdet
 import streamlit as st
 import tempfile
 
+# Database insertion related imports
+from datetime import datetime
+from .dbconfig import connection_string, db_name, video_collection_name
+from pymongo import MongoClient
+
 class VideoTracker:
     def __init__(self, framework='tf', tiny=False, model='yolov3'):
         # Model configuration
@@ -96,7 +101,7 @@ class VideoTracker:
 
 
     # Returns a video with annotations and well as text listing the results
-    def track_video(self, video_path):
+    def track_video(self, video_path, video_name):
         input_size = 416
         status = st.empty()
 
@@ -263,7 +268,37 @@ class VideoTracker:
         out.release()
         cv2.destroyAllWindows()
 
+        # Send detection result to DB
+        self.update_db(video_name, frame_count, results_dict)
+
         # Remove tracking elements so that final result can be displayed
         my_bar.empty()
         frame_result.empty()
         return resultTempFile, results_dict
+
+    # Update database with detection
+    def update_db(self, filename, framecount, results_dict):
+        detections_list = []
+        with open('./pages/data/classes/obj.names') as f:
+            classes = f.read().splitlines()
+        for class_name in classes:
+            if class_name in results_dict:
+                detections_list.append({class_name : results_dict[class_name]})
+            else:
+                detections_list.append({class_name: 0})
+        date = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+        video_json = { 'filename': filename, 'date_added': date, 'num_frames': framecount, 'detections_count' : detections_list }
+
+        # Connect to DB
+        connection_uri = connection_string
+        client = MongoClient(connection_uri)
+        db = client[db_name]
+        video_collection = db[video_collection_name]
+        # Insert record into collection
+        try:
+            video_collection.insert_one(video_json)
+            print("Added Video detection to Database: ", video_json)
+        except:
+            print("Unable to add video [", filename, "] detection to Database")
+        # Close the client
+        client.close()

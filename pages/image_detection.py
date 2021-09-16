@@ -109,6 +109,6 @@ def update_db(filename, detections):
         image_collection.insert_one(image_json)
         print("Added Image detection to Database: ", image_json)
     except:
-        print("Unable to add detection to Database")
+        print("Unable to add image [", filename, "] detection to Database")
     # Close the client
     client.close()
